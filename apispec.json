@@ -1,0 +1,14 @@
+{
+    "openapi":"3.0.2",
+    "info": {
+        "title":"Article RESTFUL API",
+        "description": "API Spec for Article RESTFUL API",
+        "version":"1.0"
+    },
+    "servers": [
+        {"url":"https://api.server.test/v1"}
+    ],
+    "paths": {
+        
+    }
+}
