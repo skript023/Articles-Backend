@@ -6,7 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func InitializeRoute(app *fiber.App) {
+func SetupRoute(app *fiber.App) {
 	app.Get("/api", func(res *fiber.Ctx) error {
 		return res.SendString("Welcome to my API")
 	})

@@ -2,11 +2,11 @@ package main
 
 import (
 	"ArticleBackend/database"
-	joaat "ArticleBackend/joaat"
 	"ArticleBackend/routes"
 	"fmt"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 )
 
 type Check interface {
@@ -27,15 +27,11 @@ func IsDataExist(check Check) {
 
 func main() {
 	database.ConnectDatabase()
-	adder := joaat.Hash("Adder")
-	fmt.Println(adder)
-	var check_existance Data
-	check_existance.Exist = true
-	IsDataExist(check_existance)
 
 	app := fiber.New()
+	app.Use(cors.New())
 
-	routes.InitializeRoute(app)
+	routes.SetupRoute(app)
 
 	app.Listen(":8000")
 }
