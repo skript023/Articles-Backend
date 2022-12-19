@@ -13,15 +13,16 @@ import (
 )
 
 type Post struct {
-	ID         uint   `json:"id"`
-	OwnerID    uint   `json:"owner_id"`
-	Owner      User   `json:"owner"`
-	CategoryID uint   `json:"category_id"`
-	PostTitle  string `json:"post_title"`
-	Post       string `json:"post"`
-	PostSlug   string `json:"post_slug"`
-	PostImage  string `json:"post_image"`
-	PostStatus string `json:"post_status"`
+	ID         uint     `json:"id"`
+	OwnerID    uint     `json:"owner_id"`
+	Owner      User     `json:"owner"`
+	CategoryID uint     `json:"category_id"`
+	Category   Category `json:"category"`
+	PostTitle  string   `json:"post_title"`
+	Post       string   `json:"post"`
+	PostSlug   string   `json:"post_slug"`
+	PostImage  string   `json:"post_image"`
+	PostStatus string   `json:"post_status"`
 	CreatedAt  time.Time
 }
 
@@ -31,6 +32,7 @@ func responsePost(post models.Post) Post {
 		OwnerID:    post.OwnerID,
 		Owner:      getUserData(int(post.OwnerID)),
 		CategoryID: post.CategoryID,
+		Category:   getCategoryData(int(post.CategoryID)),
 		PostTitle:  post.PostTitle,
 		Post:       post.Post,
 		PostSlug:   post.PostSlug,
@@ -44,7 +46,7 @@ func CreatePost(res *fiber.Ctx) error {
 	var post models.Post
 
 	if err := res.BodyParser(&post); err != nil {
-		return res.Status(400).JSON(fiber.Map{
+		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  joaat.Hash("CREATE_POST_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 		})
@@ -53,7 +55,7 @@ func CreatePost(res *fiber.Ctx) error {
 	user_id := GetIdFromToken(res)
 
 	if user_id == 0 {
-		return res.Status(400).JSON(fiber.Map{
+		return res.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"status":  joaat.Hash("USER_OWNER_ID_INVALID"),
 			"message": "Invalid post owner",
 		})
@@ -63,7 +65,7 @@ func CreatePost(res *fiber.Ctx) error {
 
 	database.DB.Create(&post)
 
-	return res.Status(200).JSON(fiber.Map{
+	return res.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  joaat.Hash("CREATE_POST_SUCCESS"),
 		"message": "Post created successfully.",
 	})
@@ -79,7 +81,7 @@ func GetPosts(res *fiber.Ctx) error {
 		response_posts = append(response_posts, response_post)
 	}
 
-	return res.Status(200).JSON(response_posts)
+	return res.Status(fiber.StatusOK).JSON(response_posts)
 }
 
 func findPost(id int, post *models.Post) error {
@@ -144,7 +146,7 @@ func UpdatePost(res *fiber.Ctx) error {
 	var update Update
 
 	if err := res.BodyParser(&update); err != nil {
-		return res.Status(fiber.StatusNotAcceptable).JSON(fiber.Map{
+		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  joaat.Hash("BODY_PARSING_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 		})

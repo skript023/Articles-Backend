@@ -40,7 +40,7 @@ func CreateUser(res *fiber.Ctx) error {
 	var user models.User
 
 	if err := res.BodyParser(&user); err != nil {
-		return res.Status(400).JSON(fiber.Map{
+		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  joaat.Hash("CREATE_USER_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 		})
@@ -48,7 +48,7 @@ func CreateUser(res *fiber.Ctx) error {
 
 	hash, err := hashPassword(user.Password)
 	if err != nil {
-		return res.Status(500).JSON(fiber.Map{
+		return res.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  joaat.Hash("CREATE_USER_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 		})
@@ -57,7 +57,7 @@ func CreateUser(res *fiber.Ctx) error {
 	user.Password = hash
 	database.DB.Create(&user)
 
-	return res.Status(200).JSON(fiber.Map{
+	return res.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  joaat.Hash("CREATE_USER_SUCCESS"),
 		"message": "Registeration Success.",
 	})
@@ -73,7 +73,7 @@ func GetUsers(res *fiber.Ctx) error {
 		response_users = append(response_users, response_user)
 	}
 
-	return res.Status(200).JSON(response_users)
+	return res.Status(fiber.StatusOK).JSON(response_users)
 }
 
 func findUser(id int, user *models.User) error {
@@ -91,7 +91,7 @@ func GetUser(res *fiber.Ctx) error {
 	var user models.User
 
 	if err != nil {
-		return res.Status(400).JSON(fiber.Map{
+		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  joaat.Hash("ENSURE_ID_EXIST"),
 			"message": "Please, ensure that id is an integer",
 			"data":    fiber.Map{},
@@ -99,14 +99,14 @@ func GetUser(res *fiber.Ctx) error {
 	}
 
 	if err := findUser(id, &user); err != nil {
-		return res.Status(404).JSON(fiber.Map{
+		return res.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"status":  joaat.Hash("FIND_USER_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 			"data":    fiber.Map{},
 		})
 	}
 
-	return res.Status(200).JSON(fiber.Map{
+	return res.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  joaat.Hash("USER_RETRIEVED"),
 		"message": "User information retrieved successfully",
 		"data":    responseUser(user),
@@ -136,14 +136,14 @@ func UpdateUser(res *fiber.Ctx) error {
 	var user models.User
 
 	if err != nil {
-		return res.Status(400).JSON(fiber.Map{
+		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  joaat.Hash("ENSURE_ID_EXIST"),
 			"message": "Please, ensure that id is an integer",
 		})
 	}
 
 	if err := findUser(id, &user); err != nil {
-		return res.Status(404).JSON(fiber.Map{
+		return res.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"status":  joaat.Hash("FIND_USER_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 		})
@@ -152,7 +152,7 @@ func UpdateUser(res *fiber.Ctx) error {
 	var update Update
 
 	if err := res.BodyParser(&update); err != nil {
-		return res.Status(500).JSON(fiber.Map{
+		return res.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  joaat.Hash("BODY_PARSING_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 		})
@@ -165,7 +165,7 @@ func UpdateUser(res *fiber.Ctx) error {
 
 	database.DB.Save(&user)
 
-	return res.Status(200).JSON(fiber.Map{
+	return res.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  joaat.Hash("UPDATE_USER_SUCCESS"),
 		"message": "User information updated successfully",
 	})
@@ -177,27 +177,27 @@ func DeleteUser(res *fiber.Ctx) error {
 	var user models.User
 
 	if err != nil {
-		return res.Status(400).JSON(fiber.Map{
+		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  joaat.Hash("ENSURE_ID_EXIST"),
 			"message": "Please, ensure that id is an integer",
 		})
 	}
 
 	if err := findUser(id, &user); err != nil {
-		return res.Status(404).JSON(fiber.Map{
+		return res.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"status":  joaat.Hash("FIND_USER_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 		})
 	}
 
 	if err := database.DB.Delete(&user).Error; err != nil {
-		return res.Status(404).JSON(fiber.Map{
+		return res.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  joaat.Hash("DELETE_USER_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 		})
 	}
 
-	return res.Status(200).JSON(fiber.Map{
+	return res.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  joaat.Hash("DELETE_USER_SUCCESS"),
 		"message": "User deleted successfully",
 	})
