@@ -6,21 +6,18 @@ import (
 	"ArticleBackend/models"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type User struct {
-	ID        uint   `json:"id"`
-	Fullname  string `json:"fullname"`
-	Username  string `json:"username"`
-	Email     string `json:"email"`
-	Password  string `json:"password"`
-	Avatar    string `json:"avatar"`
-	Status    string `json:"status"`
-	CreatedAt time.Time
+	ID       uint   `json:"id"`
+	Fullname string `json:"fullname"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Avatar   string `json:"avatar"`
+	Status   string `json:"status"`
 }
 
 func hashPassword(password string) (string, error) {
@@ -30,12 +27,13 @@ func hashPassword(password string) (string, error) {
 
 func responseUser(user models.User) User {
 	return User{
-		ID:        user.ID,
-		Fullname:  user.Fullname,
-		Email:     user.Email,
-		Avatar:    user.Avatar,
-		Status:    user.Status,
-		CreatedAt: user.CreatedAt}
+		ID:       user.ID,
+		Fullname: user.Fullname,
+		Username: user.Username,
+		Email:    user.Email,
+		Avatar:   user.Avatar,
+		Status:   user.Status,
+	}
 }
 
 func CreateUser(res *fiber.Ctx) error {
@@ -96,6 +94,7 @@ func GetUser(res *fiber.Ctx) error {
 		return res.Status(400).JSON(fiber.Map{
 			"status":  joaat.Hash("ENSURE_ID_EXIST"),
 			"message": "Please, ensure that id is an integer",
+			"data":    fiber.Map{},
 		})
 	}
 
@@ -103,10 +102,25 @@ func GetUser(res *fiber.Ctx) error {
 		return res.Status(404).JSON(fiber.Map{
 			"status":  joaat.Hash("FIND_USER_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
+			"data":    fiber.Map{},
 		})
 	}
 
-	return res.Status(200).JSON(user)
+	return res.Status(200).JSON(fiber.Map{
+		"status":  joaat.Hash("USER_RETRIEVED"),
+		"message": "User information retrieved successfully",
+		"data":    responseUser(user),
+	})
+}
+
+func getUserData(id int) User {
+	var user models.User
+
+	if err := findUser(id, &user); err != nil {
+		return User{}
+	}
+
+	return responseUser(user)
 }
 
 func UpdateUser(res *fiber.Ctx) error {

@@ -15,6 +15,7 @@ import (
 type Post struct {
 	ID         uint   `json:"id"`
 	OwnerID    uint   `json:"owner_id"`
+	Owner      User   `json:"owner"`
 	CategoryID uint   `json:"category_id"`
 	PostTitle  string `json:"post_title"`
 	Post       string `json:"post"`
@@ -28,6 +29,7 @@ func responsePost(post models.Post) Post {
 	return Post{
 		ID:         post.ID,
 		OwnerID:    post.OwnerID,
+		Owner:      getUserData(int(post.OwnerID)),
 		CategoryID: post.CategoryID,
 		PostTitle:  post.PostTitle,
 		Post:       post.Post,
@@ -63,7 +65,7 @@ func CreatePost(res *fiber.Ctx) error {
 
 	return res.Status(200).JSON(fiber.Map{
 		"status":  joaat.Hash("CREATE_POST_SUCCESS"),
-		"message": "Create Post Success.",
+		"message": "Post created successfully.",
 	})
 }
 
@@ -95,20 +97,20 @@ func GetPost(res *fiber.Ctx) error {
 	var post models.Post
 
 	if err != nil {
-		return res.Status(400).JSON(fiber.Map{
+		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  joaat.Hash("ENSURE_ID_EXIST"),
 			"message": "Please, ensure that id is an integer",
 		})
 	}
 
 	if err := findPost(id, &post); err != nil {
-		return res.Status(404).JSON(fiber.Map{
+		return res.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"status":  joaat.Hash("FIND_POST_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 		})
 	}
 
-	return res.Status(200).JSON(post)
+	return res.Status(fiber.StatusOK).JSON(post)
 }
 
 func UpdatePost(res *fiber.Ctx) error {
@@ -126,14 +128,14 @@ func UpdatePost(res *fiber.Ctx) error {
 	var post models.Post
 
 	if err != nil {
-		return res.Status(400).JSON(fiber.Map{
+		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  joaat.Hash("ENSURE_ID_EXIST"),
 			"message": "Please, ensure that id is an integer",
 		})
 	}
 
 	if err := findPost(id, &post); err != nil {
-		return res.Status(404).JSON(fiber.Map{
+		return res.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"status":  joaat.Hash("FIND_POST_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 		})
@@ -142,7 +144,7 @@ func UpdatePost(res *fiber.Ctx) error {
 	var update Update
 
 	if err := res.BodyParser(&update); err != nil {
-		return res.Status(500).JSON(fiber.Map{
+		return res.Status(fiber.StatusNotAcceptable).JSON(fiber.Map{
 			"status":  joaat.Hash("BODY_PARSING_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 		})
@@ -157,7 +159,7 @@ func UpdatePost(res *fiber.Ctx) error {
 
 	database.DB.Save(&post)
 
-	return res.Status(200).JSON(fiber.Map{
+	return res.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  joaat.Hash("UPDATE_POST_SUCCESS"),
 		"message": "Post updated successfully",
 	})
@@ -169,27 +171,27 @@ func DeletePost(res *fiber.Ctx) error {
 	var post models.Post
 
 	if err != nil {
-		return res.Status(400).JSON(fiber.Map{
+		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  joaat.Hash("ENSURE_ID_EXIST"),
 			"message": "Please, ensure that id is an integer",
 		})
 	}
 
 	if err := findPost(id, &post); err != nil {
-		return res.Status(404).JSON(fiber.Map{
+		return res.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"status":  joaat.Hash("FIND_POST_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 		})
 	}
 
 	if err := database.DB.Delete(&post).Error; err != nil {
-		return res.Status(404).JSON(fiber.Map{
+		return res.Status(fiber.StatusExpectationFailed).JSON(fiber.Map{
 			"status":  joaat.Hash("DELETE_POST_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 		})
 	}
 
-	return res.Status(200).JSON(fiber.Map{
+	return res.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  joaat.Hash("DELETE_POST_SUCCESS"),
 		"message": "Post deleted successfully",
 	})
