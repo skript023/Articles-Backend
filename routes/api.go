@@ -32,8 +32,9 @@ func SetupRouteApi(app *fiber.App) {
 	})
 	auth.Post("/login", controller.Login)
 
-	post.Post("/create", middleware.Protected(), controller.CreatePost)
 	post.Get("/all", middleware.Protected(), controller.GetPosts)
+	post.Get("/:id", middleware.Protected(), controller.GetPost)
+	post.Post("/create", middleware.Protected(), controller.CreatePost)
 	post.Patch("/update/:id", middleware.Protected(), controller.UpdatePost)
 	post.Delete("/delete/:id", middleware.Protected(), controller.DeletePost)
 
