@@ -6,10 +6,13 @@ import (
 	"ArticleBackend/joaat"
 	"ArticleBackend/models"
 	"errors"
+	"fmt"
 	"net/mail"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -141,9 +144,41 @@ func Login(res *fiber.Ctx) error {
 		return res.SendStatus(fiber.StatusInternalServerError)
 	}
 
+	currSession, err := session.New().Get(res)
+	defer currSession.Save()
+	if err != nil {
+		return err
+	}
+	err = currSession.Regenerate()
+	if err != nil {
+		return err
+	}
+	currSession.Set("User", fiber.Map{
+		"id":    ud.ID,
+		"name":  ud.Username,
+		"email": ud.Email,
+	})
+
 	return res.JSON(fiber.Map{
 		"status":  joaat.Hash("AUTH_SUCCESS"),
 		"message": "Success login",
 		"data":    t,
 	})
+}
+
+func GetIdFromToken(res *fiber.Ctx) float64 {
+	header := res.Request().Header.Peek("Authorization")
+	split := strings.Split(string(header), "Bearer ")
+	token := split[1]
+
+	claims := jwt.MapClaims{}
+	jwt.ParseWithClaims(token, claims, func(tokens *jwt.Token) (interface{}, error) {
+		return []byte(config.Env("SECRET")), nil
+	})
+
+	for key, val := range claims {
+		fmt.Printf("Key: %v, value: %v\n", key, val)
+	}
+
+	return claims["user_id"].(float64)
 }

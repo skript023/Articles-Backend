@@ -3,26 +3,20 @@ package main
 import (
 	"ArticleBackend/database"
 	"ArticleBackend/routes"
-	"fmt"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/csrf"
+	"github.com/gofiber/fiber/v2/utils"
 )
 
-type Check interface {
-	HasData() bool
-}
-
-type Data struct {
-	Exist bool
-}
-
-func (data Data) HasData() bool {
-	return data.Exist
-}
-
-func IsDataExist(check Check) {
-	fmt.Println(check.HasData())
+var ConfigDefault = csrf.Config{
+	KeyLookup:      "header:X-Csrf-Token",
+	CookieName:     "csrf_",
+	CookieSameSite: "Strict",
+	Expiration:     1 * time.Hour,
+	KeyGenerator:   utils.UUID,
 }
 
 func main() {
@@ -31,7 +25,8 @@ func main() {
 	app := fiber.New()
 	app.Use(cors.New())
 
-	routes.SetupRoute(app)
+	routes.SetupRouteWeb(app)
+	routes.SetupRouteApi(app)
 
 	app.Listen(":8000")
 }

@@ -8,6 +8,8 @@ require (
 	github.com/gofiber/fiber/v2 v2.40.1 // indirect
 	github.com/gofiber/jwt/v3 v3.3.4 // indirect
 	github.com/golang-jwt/jwt/v4 v4.4.3 // indirect
+	github.com/gosimple/slug v1.13.1 // indirect
+	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgconn v1.13.0 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
