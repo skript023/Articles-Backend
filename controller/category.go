@@ -69,7 +69,7 @@ func GetCategory(res *fiber.Ctx) error {
 
 	if err != nil {
 		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status":  joaat.Hash("ENSURE_ID_EXIST"),
+			"status":  joaat.Hash("ENSURE_ID_VALID"),
 			"message": "Please, ensure that id is an integer",
 		})
 	}
@@ -102,7 +102,7 @@ func UpdateCategory(res *fiber.Ctx) error {
 
 	if err != nil {
 		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status":  joaat.Hash("ENSURE_ID_EXIST"),
+			"status":  joaat.Hash("ENSURE_ID_VALID"),
 			"message": "Please, ensure that id is an integer",
 		})
 	}
@@ -131,5 +131,37 @@ func UpdateCategory(res *fiber.Ctx) error {
 	return res.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  joaat.Hash("UPDATE_CATEGORY_SUCCESS"),
 		"message": "Post updated successfully",
+	})
+}
+
+func DeleteCategory(res *fiber.Ctx) error {
+	id, err := res.ParamsInt("id")
+
+	var category models.Category
+
+	if err != nil {
+		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  joaat.Hash("ENSURE_ID_VALID"),
+			"message": "Please, ensure that id is an integer",
+		})
+	}
+
+	if err := findCategory(id, &category); err != nil {
+		return res.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"status":  joaat.Hash("FIND_CATEGORY_FAILED"),
+			"message": fmt.Sprintf("Error : %s", err.Error()),
+		})
+	}
+
+	if err := database.DB.Delete(&category).Error; err != nil {
+		return res.Status(fiber.StatusExpectationFailed).JSON(fiber.Map{
+			"status":  joaat.Hash("DELETE_CATEGORY_FAILED"),
+			"message": fmt.Sprintf("Error : %s", err.Error()),
+		})
+	}
+
+	return res.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  joaat.Hash("DELETE_CATEGORY_SUCCESS"),
+		"message": "Category deleted successfully",
 	})
 }

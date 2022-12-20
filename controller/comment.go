@@ -6,56 +6,65 @@ import (
 	"ArticleBackend/models"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"golang.org/x/crypto/bcrypt"
 )
 
-type User struct {
+type Comment struct {
+	ID        uint   `json:"id"`
+	PostID    uint   `json:"post_id"`
+	Post      Post   `json:"post"`
+	Fullname  string `json:"fullname"`
+	Email     string `json:"email"`
+	Comment   string `json:"comment"`
+	Status    string `json:"status"`
+	CreatedAt time.Time
+}
+
+type CommentPost struct {
 	ID       uint   `json:"id"`
+	PostID   uint   `json:"post_id"`
 	Fullname string `json:"fullname"`
-	Username string `json:"username"`
 	Email    string `json:"email"`
-	Avatar   string `json:"avatar"`
+	Comment  string `json:"comment"`
 	Status   string `json:"status"`
 }
 
-func hashPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
-	return string(bytes), err
-}
-
-func responseUser(user models.User) User {
-	return User{
-		ID:       user.ID,
-		Fullname: user.Fullname,
-		Username: user.Username,
-		Email:    user.Email,
-		Avatar:   user.Avatar,
-		Status:   user.Status,
+func responseComment(comment models.Comment) Comment {
+	return Comment{
+		ID:       comment.ID,
+		PostID:   comment.PostID,
+		Post:     getPostData(int(comment.PostID)),
+		Fullname: comment.Fullname,
+		Email:    comment.Email,
+		Comment:  comment.Comment,
+		Status:   comment.Status,
 	}
 }
 
-func CreateUser(res *fiber.Ctx) error {
-	var user models.User
+func responsePostComment(comment models.Comment) CommentPost {
+	return CommentPost{
+		ID:       comment.ID,
+		PostID:   comment.PostID,
+		Fullname: comment.Fullname,
+		Email:    comment.Email,
+		Comment:  comment.Comment,
+		Status:   comment.Status,
+	}
+}
 
-	if err := res.BodyParser(&user); err != nil {
+func CreateComment(res *fiber.Ctx) error {
+	var comment models.Comment
+
+	if err := res.BodyParser(&comment); err != nil {
 		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  joaat.Hash("CREATE_USER_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 		})
 	}
 
-	hash, err := hashPassword(user.Password)
-	if err != nil {
-		return res.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status":  joaat.Hash("CREATE_USER_FAILED"),
-			"message": fmt.Sprintf("Error : %s", err.Error()),
-		})
-	}
-
-	user.Password = hash
-	database.DB.Create(&user)
+	database.DB.Create(&comment)
 
 	return res.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  joaat.Hash("CREATE_USER_SUCCESS"),
@@ -63,77 +72,77 @@ func CreateUser(res *fiber.Ctx) error {
 	})
 }
 
-func GetUsers(res *fiber.Ctx) error {
-	users := []models.User{}
+func GetComments(res *fiber.Ctx) error {
+	comments := []models.Comment{}
 
-	database.DB.Find(&users)
-	response_users := []User{}
-	for _, user := range users {
-		response_user := responseUser(user)
-		response_users = append(response_users, response_user)
+	database.DB.Find(&comments)
+	response_comments := []Comment{}
+	for _, comment := range comments {
+		response_comment := responseComment(comment)
+		response_comments = append(response_comments, response_comment)
 	}
 
-	return res.Status(fiber.StatusOK).JSON(response_users)
+	return res.Status(fiber.StatusOK).JSON(response_comments)
 }
 
-func findUser(id int, user *models.User) error {
-	database.DB.Find(&user, "id = ?", id)
-	if user.ID == 0 {
-		return errors.New("user does not exist")
+func findComment(id int, comment *models.Comment) error {
+	database.DB.Find(&comment, "id = ?", id)
+	if comment.ID == 0 {
+		return errors.New("Post does not exist")
 	}
 
 	return nil
 }
 
-func GetUser(res *fiber.Ctx) error {
+func GetComment(res *fiber.Ctx) error {
 	id, err := res.ParamsInt("id")
 
-	var user models.User
+	var comment models.Comment
 
 	if err != nil {
 		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  joaat.Hash("ENSURE_ID_VALID"),
 			"message": "Please, ensure that id is an integer",
-			"data":    fiber.Map{},
 		})
 	}
 
-	if err := findUser(id, &user); err != nil {
+	if err := findComment(id, &comment); err != nil {
 		return res.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"status":  joaat.Hash("FIND_USER_FAILED"),
+			"status":  joaat.Hash("FIND_COMMENT_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
-			"data":    fiber.Map{},
 		})
 	}
 
-	return res.Status(fiber.StatusOK).JSON(fiber.Map{
-		"status":  joaat.Hash("USER_RETRIEVED"),
-		"message": "User information retrieved successfully",
-		"data":    responseUser(user),
-	})
+	return res.Status(fiber.StatusOK).JSON(comment)
 }
 
-func getUserData(id int) User {
-	var user models.User
-
-	if err := findUser(id, &user); err != nil {
-		return User{}
+func findCommentPost(id uint, comment *models.Comment) error {
+	database.DB.Find(&comment, "post_id = ?", id)
+	if comment.ID == 0 {
+		return errors.New("Post does not exist")
 	}
 
-	return responseUser(user)
+	return nil
 }
 
-func UpdateUser(res *fiber.Ctx) error {
+func getCommentData(id uint) CommentPost {
+	var comments models.Comment
+
+	if err := findCommentPost(id, &comments); err != nil {
+		return CommentPost{}
+	}
+
+	return responsePostComment(comments)
+}
+
+func UpdateComment(res *fiber.Ctx) error {
 	type Update struct {
-		Username string `json:"username"`
-		Fullname string `json:"fullname"`
-		Email    string `json:"email"`
-		Avatar   string `json:"avatar"`
+		Comment string `json:"comment"`
 	}
 
 	id, err := res.ParamsInt("id")
 
-	var user models.User
+	var user models.Comment
 
 	if err != nil {
 		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -142,7 +151,7 @@ func UpdateUser(res *fiber.Ctx) error {
 		})
 	}
 
-	if err := findUser(id, &user); err != nil {
+	if err := findComment(id, &user); err != nil {
 		return res.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"status":  joaat.Hash("FIND_USER_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
@@ -158,10 +167,7 @@ func UpdateUser(res *fiber.Ctx) error {
 		})
 	}
 
-	user.Username = update.Username
-	user.Fullname = update.Fullname
-	user.Email = update.Email
-	user.Avatar = update.Avatar
+	user.Comment = update.Comment
 
 	database.DB.Save(&user)
 
@@ -171,10 +177,10 @@ func UpdateUser(res *fiber.Ctx) error {
 	})
 }
 
-func DeleteUser(res *fiber.Ctx) error {
+func DeleteComment(res *fiber.Ctx) error {
 	id, err := res.ParamsInt("id")
 
-	var user models.User
+	var comment models.Comment
 
 	if err != nil {
 		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -183,14 +189,14 @@ func DeleteUser(res *fiber.Ctx) error {
 		})
 	}
 
-	if err := findUser(id, &user); err != nil {
+	if err := findComment(id, &comment); err != nil {
 		return res.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"status":  joaat.Hash("FIND_USER_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 		})
 	}
 
-	if err := database.DB.Delete(&user).Error; err != nil {
+	if err := database.DB.Delete(&comment).Error; err != nil {
 		return res.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  joaat.Hash("DELETE_USER_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
