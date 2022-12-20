@@ -5,18 +5,23 @@ import (
 	"ArticleBackend/database"
 	"ArticleBackend/joaat"
 	"ArticleBackend/models"
+	"encoding/gob"
 	"errors"
 	"fmt"
 	"net/mail"
 	"strings"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
+
+var validate = validator.New()
+var store_session = session.New()
 
 func CheckPasswordHash(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
@@ -26,7 +31,7 @@ func CheckPasswordHash(password, hash string) bool {
 func getUserByEmail(e string) (*models.User, error) {
 	db := database.DB
 	var user models.User
-	if err := db.Where(&models.User{Email: e}).Find(&user).Error; err != nil {
+	if err := db.Find(&user, "email = ?", e).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -38,7 +43,7 @@ func getUserByEmail(e string) (*models.User, error) {
 func getUserByUsername(u string) (*models.User, error) {
 	db := database.DB
 	var user models.User
-	if err := db.Where(&models.User{Username: u}).Find(&user).Error; err != nil {
+	if err := db.Find(&user, "username = ?", u).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -52,118 +57,140 @@ func valid(email string) bool {
 	return err == nil
 }
 
+func authAttempt(credentials interface{}) (*models.User, error) {
+	data := credentials.(fiber.Map)
+	user, email, err := new(models.User), new(models.User), *new(error)
+
+	if valid(data["identity"].(string)) {
+		email, err = getUserByEmail(data["identity"].(string))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		user, err = getUserByUsername(data["identity"].(string))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if email != nil && CheckPasswordHash(data["password"].(string), email.Password) {
+		return email, nil
+	}
+
+	if user != nil && CheckPasswordHash(data["password"].(string), user.Password) {
+		return user, nil
+	}
+
+	return nil, errors.New("credentials not valid")
+}
+
 func Login(res *fiber.Ctx) error {
 	type LoginInput struct {
-		Identity string `json:"identity"`
-		Password string `json:"password"`
+		Identity string `json:"identity" validate:"required"`
+		Password string `json:"password" validate:"required"`
 	}
-	type UserData struct {
-		ID       uint   `json:"id"`
-		Username string `json:"username"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+
 	input := new(LoginInput)
-	var ud UserData
 
 	if err := res.BodyParser(&input); err != nil {
 		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  joaat.Hash("BODY_PARSING_FAILED"),
 			"message": "Error on login request",
-			"data":    err,
+			"data":    "NO_DATA_AQUIRED",
 		})
 	}
 
-	identity := input.Identity
-	pass := input.Password
-	user, email, err := new(models.User), new(models.User), *new(error)
-
-	if valid(identity) {
-		email, err = getUserByEmail(identity)
-		if err != nil {
-			return res.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"status":  joaat.Hash("EMAIL_INVALID"),
-				"message": "Credential does not match",
-				"data":    err,
-			})
-		}
-	} else {
-		user, err = getUserByUsername(identity)
-		if err != nil {
-			return res.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"status":  joaat.Hash("USERNAME_INVALID"),
-				"message": "Credential does not match",
-				"data":    err,
-			})
-		}
-	}
-
-	if email == nil && user == nil {
-		return res.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"status":  joaat.Hash("USER_NOT_FOUND"),
+	if err := validate.Struct(input); err != nil {
+		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  joaat.Hash("BODY_PARSING_FAILED"),
 			"message": "Credential does not match",
-			"data":    err,
+			"data":    "NO_DATA_AQUIRED",
 		})
 	}
 
-	if email != nil {
-		ud = UserData{
-			ID:       email.ID,
-			Username: email.Username,
-			Email:    email.Email,
-			Password: email.Password,
-		}
-
-	}
-	if user != nil {
-		ud = UserData{
-			ID:       user.ID,
-			Username: user.Username,
-			Email:    user.Email,
-			Password: user.Password,
-		}
+	credential := fiber.Map{
+		"identity": input.Identity,
+		"password": input.Password,
 	}
 
-	if !CheckPasswordHash(pass, ud.Password) {
-		return res.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"status":  joaat.Hash("PASSWORD_INVALID"),
+	user, err := authAttempt(credential)
+
+	if err != nil {
+		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  joaat.Hash("AUTH_FAILED"),
 			"message": "Credential does not match",
-			"data":    nil,
+			"data":    "NO_DATA_AQUIRED",
 		})
 	}
 
 	token := jwt.New(jwt.SigningMethodHS256)
 
 	claims := token.Claims.(jwt.MapClaims)
-	claims["username"] = ud.Username
-	claims["user_id"] = ud.ID
-	claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
+	claims["username"] = user.Username
+	claims["user_id"] = user.ID
+	claims["exp"] = time.Now().Add(time.Hour * 24).Unix()
 
 	t, err := token.SignedString([]byte(config.Env("SECRET")))
 	if err != nil {
 		return res.SendStatus(fiber.StatusInternalServerError)
 	}
 
-	currSession, err := session.New().Get(res)
-	defer currSession.Save()
-	if err != nil {
-		return err
-	}
-	err = currSession.Regenerate()
-	if err != nil {
-		return err
-	}
-	currSession.Set("User", fiber.Map{
-		"id":    ud.ID,
-		"name":  ud.Username,
-		"email": ud.Email,
-	})
+	current_session, err := store_session.Get(res)
 
-	return res.JSON(fiber.Map{
+	if err != nil {
+		return res.Status(fiber.StatusOK).JSON(fiber.Map{
+			"status":  joaat.Hash("GET_SESSION_FAILED"),
+			"message": fmt.Sprintf("Error : %v", err),
+			"data":    "NO_DATA_ACQUIRED",
+		})
+	}
+
+	if err := current_session.Regenerate(); err != nil {
+		return res.Status(fiber.StatusOK).JSON(fiber.Map{
+			"status":  joaat.Hash("REGENERATE_SESSION_FAILED"),
+			"message": fmt.Sprintf("Error : %v", err),
+			"data":    "NO_DATA_ACQUIRED",
+		})
+	}
+
+	current_session.Set("user", responseUser(*user))
+
+	res.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  joaat.Hash("AUTH_SUCCESS"),
 		"message": "Success login",
 		"data":    t,
 	})
+	gob.Register(fiber.Map{})
+	return current_session.Save()
+}
+
+func SessionData(res *fiber.Ctx) error {
+	current, _ := store_session.Get(res)
+	user := current.Get("user")
+	if user == nil {
+		return res.Status(500).JSON(fiber.Map{
+			"status":  joaat.Hash("USER_INVALID"),
+			"message": "Unable get data from server",
+		})
+	}
+	return res.Status(200).JSON(user.(fiber.Map))
+}
+
+func authUser(res *fiber.Ctx) User {
+	current, err := store_session.Get(res)
+
+	if err != nil {
+		return User{}
+	}
+
+	user := current.Get("user")
+	if user == nil {
+		return User{}
+	}
+
+	result := user.(models.User)
+
+	return responseUser(result)
 }
 
 func GetIdFromToken(res *fiber.Ctx) float64 {
@@ -175,10 +202,6 @@ func GetIdFromToken(res *fiber.Ctx) float64 {
 	jwt.ParseWithClaims(token, claims, func(tokens *jwt.Token) (interface{}, error) {
 		return []byte(config.Env("SECRET")), nil
 	})
-
-	for key, val := range claims {
-		fmt.Printf("Key: %v, value: %v\n", key, val)
-	}
 
 	return claims["user_id"].(float64)
 }

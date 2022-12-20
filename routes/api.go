@@ -1,14 +1,11 @@
 package routes
 
 import (
-	"ArticleBackend/config"
 	"ArticleBackend/controller"
 	"ArticleBackend/middleware"
-	"fmt"
-	"strings"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/gofiber/fiber/v2/middleware/session"
 )
 
 func SetupRouteApi(app *fiber.App) {
@@ -16,20 +13,22 @@ func SetupRouteApi(app *fiber.App) {
 	auth := api.Group("/auth")
 	user := api.Group("/user")
 	post := api.Group("/post")
+	sessions := session.New()
 
 	api.Get("/test", middleware.Protected(), func(c *fiber.Ctx) error {
-		header := c.Request().Header.Peek("Authorization")
-		split := strings.Split(string(header), "Bearer ")
-		tokens := split[1]
+		store, _ := sessions.Get(c)
+		//    set value to the session store
+		store.Set("name", "King Windrol")
 
-		claims := jwt.MapClaims{}
-		jwt.ParseWithClaims(tokens, claims, func(tokens *jwt.Token) (interface{}, error) {
-			return []byte(config.Env("SECRET")), nil
+		name := store.Get("name")
+		c.Status(200).JSON(fiber.Map{
+			"name": name,
 		})
-
-		fmt.Printf("value: %v", claims["user_id"])
-		return c.SendStatus(200)
+		return store.Save()
 	})
+
+	api.Get("/test2", middleware.Protected(), controller.SessionData)
+
 	auth.Post("/login", controller.Login)
 
 	post.Get("/all", middleware.Protected(), controller.GetPosts)

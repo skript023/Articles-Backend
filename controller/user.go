@@ -37,16 +37,24 @@ func responseUser(user models.User) User {
 }
 
 func CreateUser(res *fiber.Ctx) error {
+	type Input struct {
+		Fullname string `json:"fullname" validate:"required"`
+		Username string `json:"username" validate:"required"`
+		Email    string `json:"email" validate:"required,email"`
+		Password string `json:"password" validate:"required,min=8"`
+	}
+
+	var input Input
 	var user models.User
 
-	if err := res.BodyParser(&user); err != nil {
+	if err := res.BodyParser(&input); err != nil {
 		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  joaat.Hash("CREATE_USER_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 		})
 	}
 
-	hash, err := hashPassword(user.Password)
+	hash, err := hashPassword(input.Password)
 	if err != nil {
 		return res.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  joaat.Hash("CREATE_USER_FAILED"),
@@ -54,12 +62,38 @@ func CreateUser(res *fiber.Ctx) error {
 		})
 	}
 
+	user.Fullname = input.Fullname
+	user.Username = input.Username
+	user.Email = input.Email
 	user.Password = hash
-	database.DB.Create(&user)
+	user.Status = "verified"
 
-	return res.Status(fiber.StatusOK).JSON(fiber.Map{
-		"status":  joaat.Hash("CREATE_USER_SUCCESS"),
-		"message": "Registeration Success.",
+	if err := validate.Struct(input); err != nil {
+		return res.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  joaat.Hash("CREATE_USER_FAILED"),
+			"message": fmt.Sprintf("Error : %s", err.Error()),
+		})
+	}
+
+	result := database.DB.Where("username = ?", user.Username).Or("email = ?", user.Email).FirstOrCreate(&user)
+
+	if result.Error != nil {
+		return res.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  joaat.Hash("CREATE_USER_FAILED"),
+			"message": fmt.Sprintf("Error : %s", result.Error),
+		})
+	}
+
+	if result.RowsAffected == 0 {
+		return res.Status(fiber.StatusCreated).JSON(fiber.Map{
+			"status":  joaat.Hash("CREATE_USER_SUCCESS"),
+			"message": "Registeration Success.",
+		})
+	}
+
+	return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+		"status":  joaat.Hash("USERNAME_OR_EMAIL_ALREADY_EXIST"),
+		"message": "Email or Username already exist",
 	})
 }
 

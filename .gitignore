@@ -2,3 +2,5 @@
 .env
 /.vscode
 /tmp
+.air.bat
+/test
