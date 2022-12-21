@@ -55,19 +55,40 @@ func responsePostComment(comment models.Comment) CommentPost {
 }
 
 func CreateComment(res *fiber.Ctx) error {
+	type Input struct {
+		PostID   uint   `json:"post_id"`
+		Fullname string `json:"fullname" validate:"required"`
+		Email    string `json:"email" validate:"required,email"`
+		Comment  string `json:"comment" validate:"required"`
+		Status   string `json:"status"`
+	}
+
+	var input Input
 	var comment models.Comment
 
-	if err := res.BodyParser(&comment); err != nil {
+	if err := res.BodyParser(&input); err != nil {
 		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status":  joaat.Hash("CREATE_USER_FAILED"),
+			"status":  joaat.Hash("CREATE_COMMENT_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 		})
 	}
 
+	if err := validate.Struct(input); err != nil {
+		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  joaat.Hash("REQUIREMENT_DOES_NOT_MATCH"),
+			"message": fmt.Sprintf("Error : %s", err.Error()),
+		})
+	}
+
+	comment.Fullname = input.Fullname
+	comment.Email = input.Email
+	comment.Comment = input.Comment
+	comment.Status = "approved"
+
 	database.DB.Create(&comment)
 
 	return res.Status(fiber.StatusOK).JSON(fiber.Map{
-		"status":  joaat.Hash("CREATE_USER_SUCCESS"),
+		"status":  joaat.Hash("CREATE_COMMENT_SUCCESS"),
 		"message": "Registeration Success.",
 	})
 }
@@ -153,7 +174,7 @@ func UpdateComment(res *fiber.Ctx) error {
 
 	if err := findComment(id, &user); err != nil {
 		return res.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"status":  joaat.Hash("FIND_USER_FAILED"),
+			"status":  joaat.Hash("FIND_COMMENT_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 		})
 	}
@@ -172,7 +193,7 @@ func UpdateComment(res *fiber.Ctx) error {
 	database.DB.Save(&user)
 
 	return res.Status(fiber.StatusOK).JSON(fiber.Map{
-		"status":  joaat.Hash("UPDATE_USER_SUCCESS"),
+		"status":  joaat.Hash("UPDATE_COMMENT_SUCCESS"),
 		"message": "User information updated successfully",
 	})
 }
@@ -191,20 +212,20 @@ func DeleteComment(res *fiber.Ctx) error {
 
 	if err := findComment(id, &comment); err != nil {
 		return res.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"status":  joaat.Hash("FIND_USER_FAILED"),
+			"status":  joaat.Hash("FIND_COMMENT_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 		})
 	}
 
 	if err := database.DB.Delete(&comment).Error; err != nil {
 		return res.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status":  joaat.Hash("DELETE_USER_FAILED"),
+			"status":  joaat.Hash("DELETE_COMMENT_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 		})
 	}
 
 	return res.Status(fiber.StatusOK).JSON(fiber.Map{
-		"status":  joaat.Hash("DELETE_USER_SUCCESS"),
+		"status":  joaat.Hash("DELETE_COMMENT_SUCCESS"),
 		"message": "User deleted successfully",
 	})
 }

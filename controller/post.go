@@ -41,11 +41,28 @@ func responsePost(post models.Post) Post {
 }
 
 func CreatePost(res *fiber.Ctx) error {
-	var post models.Post
+	type Input struct {
+		Title    string `json:"title" validate:"required"`
+		Post     string `json:"post" validate:"required"`
+		Category string `json:"category" validate:"required"`
+		Image    string `json:"image"`
+	}
 
-	if err := res.BodyParser(&post); err != nil {
+	var input Input
+	var post models.Post
+	var category models.Category
+	var created_category_id uint
+
+	if err := res.BodyParser(&input); err != nil {
 		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  joaat.Hash("CREATE_POST_FAILED"),
+			"message": fmt.Sprintf("Error : %s", err.Error()),
+		})
+	}
+
+	if err := validate.Struct(input); err != nil {
+		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  joaat.Hash("REQUIREMENT_DOES_NOT_MATCH"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 		})
 	}
@@ -58,8 +75,56 @@ func CreatePost(res *fiber.Ctx) error {
 			"message": "Invalid post owner",
 		})
 	}
+
+	result := database.DB.Find(&category, "category_name = ?", input.Category)
+	created_category_id = category.ID
+
+	if result.Error != nil {
+		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  joaat.Hash("CREATE_CATEGORY_FAILED"),
+			"message": fmt.Sprintf("Error : %s", result.Error),
+		})
+	}
+
+	if created_category_id == 0 {
+		var err error
+		if created_category_id, err = createCategory(input.Category); err != nil {
+			return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  joaat.Hash("CREATE_CATEGORY_FAILED"),
+				"message": fmt.Sprintf("Error : %s", err.Error()),
+			})
+		}
+	}
+
+	file, err := res.FormFile("image")
+
+	if err != nil {
+		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  joaat.Hash("FILE_DOES_NOT_VALID"),
+			"message": fmt.Sprintf("Error : %s", err.Error()),
+		})
+	}
+
+	post.PostTitle = input.Title
+	post.Post = input.Post
+	post.CategoryID = created_category_id
 	post.OwnerID = uint(user_id)
-	post.PostSlug = slug.Make(post.PostTitle)
+	post.PostSlug = slug.Make(input.Title)
+	post.PostStatus = "draft"
+
+	var filename string
+
+	if file != nil {
+		filename = file.Filename
+		if err := res.SaveFile(file, fmt.Sprintf("./public/uploads/post/%s.jpg", post.PostSlug)); err != nil {
+			return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  joaat.Hash("FILE_UPLOAD_FAILED"),
+				"message": fmt.Sprintf("Error : %s", err.Error()),
+			})
+		}
+	}
+
+	post.PostImage = filename
 
 	database.DB.Create(&post)
 

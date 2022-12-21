@@ -54,6 +54,13 @@ func CreateUser(res *fiber.Ctx) error {
 		})
 	}
 
+	if err := validate.Struct(input); err != nil {
+		return res.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  joaat.Hash("CREATE_USER_FAILED"),
+			"message": fmt.Sprintf("Error : %s", err.Error()),
+		})
+	}
+
 	hash, err := hashPassword(input.Password)
 	if err != nil {
 		return res.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -68,13 +75,6 @@ func CreateUser(res *fiber.Ctx) error {
 	user.Password = hash
 	user.Status = "verified"
 
-	if err := validate.Struct(input); err != nil {
-		return res.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status":  joaat.Hash("CREATE_USER_FAILED"),
-			"message": fmt.Sprintf("Error : %s", err.Error()),
-		})
-	}
-
 	result := database.DB.Where("username = ?", user.Username).Or("email = ?", user.Email).FirstOrCreate(&user)
 
 	if result.Error != nil {
@@ -84,7 +84,7 @@ func CreateUser(res *fiber.Ctx) error {
 		})
 	}
 
-	if result.RowsAffected == 0 {
+	if result.RowsAffected == 1 {
 		return res.Status(fiber.StatusCreated).JSON(fiber.Map{
 			"status":  joaat.Hash("CREATE_USER_SUCCESS"),
 			"message": "Registeration Success.",

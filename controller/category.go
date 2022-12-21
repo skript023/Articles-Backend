@@ -23,14 +23,28 @@ func responseCategory(category models.Category) Category {
 }
 
 func CreateCategory(res *fiber.Ctx) error {
-	var category models.Post
+	type Input struct {
+		Category_name string `json:"category_name" validate:"required"`
+	}
 
-	if err := res.BodyParser(&category); err != nil {
+	var input Input
+	var category models.Category
+
+	if err := res.BodyParser(&input); err != nil {
 		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  joaat.Hash("CREATE_CATEGORY_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
 		})
 	}
+
+	if err := validate.Struct(input); err != nil {
+		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  joaat.Hash("REQUIREMENT_DOES_NOT_MATCH"),
+			"message": fmt.Sprintf("Error : %s", err.Error()),
+		})
+	}
+
+	category.CategoryName = input.Category_name
 
 	database.DB.Create(&category)
 
@@ -38,6 +52,20 @@ func CreateCategory(res *fiber.Ctx) error {
 		"status":  joaat.Hash("CREATE_CATEGORY_SUCCESS"),
 		"message": "Post created successfully.",
 	})
+}
+
+func createCategory(name string) (uint, error) {
+	var category models.Category
+
+	category.CategoryName = name
+
+	result := database.DB.Create(&category)
+
+	if result.Error != nil {
+		return 0, result.Error
+	}
+
+	return category.ID, nil
 }
 
 func GetCategories(res *fiber.Ctx) error {

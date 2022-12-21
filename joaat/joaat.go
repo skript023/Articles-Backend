@@ -17,3 +17,7 @@ func Hash(name string) uint32 {
 
 	return hash
 }
+
+func HashCheck(name string, hash uint32) bool {
+	return Hash(name) == hash
+}

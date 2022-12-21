@@ -8,7 +8,7 @@
     <img src="https://img.shields.io/github/license/skript023/Articles-Backend.svg?style=flat-square"/>
    </a>
   <a href="https://github.com/skript023/Articles-Backend/actions">
-      <img src="https://github.com/skript023/Gottvergessen-Loader/actions/workflows/main.yml/badge.svg"/>
+      <img src="https://github.com/skript023/Articles-Backend/actions/workflows/main.yml/badge.svg"/>
    </a>
   <br>
   A simple API for <a href="https://github.com/skript023/Gottvergessen-React">Gottvergessen React Javascript</a>

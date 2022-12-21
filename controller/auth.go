@@ -85,6 +85,8 @@ func authAttempt(credentials interface{}) (*models.User, error) {
 }
 
 func Login(res *fiber.Ctx) error {
+	gob.Register(fiber.Map{})
+	gob.Register(User{})
 	type LoginInput struct {
 		Identity string `json:"identity" validate:"required"`
 		Password string `json:"password" validate:"required"`
@@ -132,7 +134,11 @@ func Login(res *fiber.Ctx) error {
 
 	t, err := token.SignedString([]byte(config.Env("SECRET")))
 	if err != nil {
-		return res.SendStatus(fiber.StatusInternalServerError)
+		return res.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  joaat.Hash("GENERATE_TOKEN_FAILED"),
+			"message": fmt.Sprintf("Error : %v", err),
+			"data":    "NO_DATA_ACQUIRED",
+		})
 	}
 
 	current_session, err := store_session.Get(res)
@@ -160,7 +166,7 @@ func Login(res *fiber.Ctx) error {
 		"message": "Success login",
 		"data":    t,
 	})
-	gob.Register(fiber.Map{})
+
 	return current_session.Save()
 }
 
@@ -176,21 +182,18 @@ func SessionData(res *fiber.Ctx) error {
 	return res.Status(200).JSON(user.(fiber.Map))
 }
 
-func authUser(res *fiber.Ctx) User {
+func authUser(res *fiber.Ctx) (User, error) {
 	current, err := store_session.Get(res)
 
 	if err != nil {
-		return User{}
+		return User{}, err
 	}
 
 	user := current.Get("user")
-	if user == nil {
-		return User{}
-	}
 
-	result := user.(models.User)
+	result := user.(User)
 
-	return responseUser(result)
+	return result, nil
 }
 
 func GetIdFromToken(res *fiber.Ctx) float64 {
