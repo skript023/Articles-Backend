@@ -56,15 +56,30 @@ func responsePostComment(comment models.Comment) CommentPost {
 
 func CreateComment(res *fiber.Ctx) error {
 	type Input struct {
-		PostID   uint   `json:"post_id"`
 		Fullname string `json:"fullname" validate:"required"`
 		Email    string `json:"email" validate:"required,email"`
 		Comment  string `json:"comment" validate:"required"`
 		Status   string `json:"status"`
 	}
 
+	title := res.Params("title")
 	var input Input
 	var comment models.Comment
+	var post models.Post
+
+	if title == "" {
+		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  joaat.Hash("PARAMS_INVALID"),
+			"message": "Request cannot be proceed, due to illegal access",
+		})
+	}
+
+	if err := findTitle(title, &post); err != nil {
+		return res.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"status":  joaat.Hash("TITLE_NO_FOUND"),
+			"message": fmt.Sprintf("Request cannot be proceed, %v", err.Error()),
+		})
+	}
 
 	if err := res.BodyParser(&input); err != nil {
 		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -80,6 +95,7 @@ func CreateComment(res *fiber.Ctx) error {
 		})
 	}
 
+	comment.PostID = post.ID
 	comment.Fullname = input.Fullname
 	comment.Email = input.Email
 	comment.Comment = input.Comment

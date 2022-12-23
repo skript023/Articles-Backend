@@ -13,6 +13,7 @@ func SetupRouteApi(app *fiber.App) {
 	auth := api.Group("/auth")
 	user := api.Group("/user")
 	post := api.Group("/post")
+	contact := api.Group("/contact")
 	sessions := session.New()
 
 	api.Get("/test", middleware.Protected(), func(c *fiber.Ctx) error {
@@ -31,13 +32,16 @@ func SetupRouteApi(app *fiber.App) {
 
 	auth.Post("/login", controller.Login)
 
-	post.Get("/all", middleware.Protected(), controller.GetPosts)
-	post.Get("/:id", middleware.Protected(), controller.GetPost)
+	post.Get("/all", controller.GetPosts)
+	post.Get("/:id", controller.GetPost)
 	post.Post("/create", middleware.Protected(), controller.CreatePost)
 	post.Patch("/update/:id", middleware.Protected(), controller.UpdatePost)
 	post.Delete("/delete/:id", middleware.Protected(), controller.DeletePost)
+	post.Get("/read/:title", controller.ReadPost)
 
 	user.Post("/create", controller.CreateUser)
 	user.Patch("/update/:id", middleware.Protected(), controller.UpdateUser)
 	user.Delete("/delete/:id", middleware.Protected(), controller.DeleteUser)
+
+	contact.Post("/create", controller.CreateContact)
 }

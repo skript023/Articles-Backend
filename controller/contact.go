@@ -24,7 +24,7 @@ func responseContact(contact models.Contact) Contact {
 	}
 }
 
-func CreateContact(res fiber.Ctx) error {
+func CreateContact(res *fiber.Ctx) error {
 	type Input struct {
 		Fullname string `json:"fullname" validate:"required"`
 		Email    string `json:"email" validate:"required,email"`

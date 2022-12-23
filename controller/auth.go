@@ -196,7 +196,7 @@ func authUser(res *fiber.Ctx) (User, error) {
 	return result, nil
 }
 
-func GetIdFromToken(res *fiber.Ctx) float64 {
+func GetIdFromToken(res *fiber.Ctx) uint {
 	header := res.Request().Header.Peek("Authorization")
 	split := strings.Split(string(header), "Bearer ")
 	token := split[1]
@@ -206,5 +206,7 @@ func GetIdFromToken(res *fiber.Ctx) float64 {
 		return []byte(config.Env("SECRET")), nil
 	})
 
-	return claims["user_id"].(float64)
+	result := claims["user_id"].(float64)
+
+	return uint(result)
 }

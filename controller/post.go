@@ -108,14 +108,14 @@ func CreatePost(res *fiber.Ctx) error {
 	post.PostTitle = input.Title
 	post.Post = input.Post
 	post.CategoryID = created_category_id
-	post.OwnerID = uint(user_id)
+	post.OwnerID = user_id
 	post.PostSlug = slug.Make(input.Title)
 	post.PostStatus = "draft"
 
 	var filename string
 
 	if file != nil {
-		filename = file.Filename
+		filename = post.PostSlug
 		if err := res.SaveFile(file, fmt.Sprintf("./public/uploads/post/%s.jpg", post.PostSlug)); err != nil {
 			return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"status":  joaat.Hash("FILE_UPLOAD_FAILED"),
@@ -151,6 +151,15 @@ func findPost(id int, post *models.Post) error {
 	database.DB.Find(&post, "id = ?", id)
 	if post.ID == 0 {
 		return errors.New("Post does not exist")
+	}
+
+	return nil
+}
+
+func findTitle(slug string, post *models.Post) error {
+	database.DB.Find(&post, "post_slug = ?", slug)
+	if post.ID == 0 {
+		return errors.New("post does not exist")
 	}
 
 	return nil
@@ -249,6 +258,7 @@ func DeletePost(res *fiber.Ctx) error {
 		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  joaat.Hash("ENSURE_ID_VALID"),
 			"message": "Please, ensure that id is an integer",
+			"data":    "NO_DATA_ACQUIRED",
 		})
 	}
 
@@ -256,6 +266,7 @@ func DeletePost(res *fiber.Ctx) error {
 		return res.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"status":  joaat.Hash("FIND_POST_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
+			"data":    "NO_DATA_ACQUIRED",
 		})
 	}
 
@@ -263,11 +274,41 @@ func DeletePost(res *fiber.Ctx) error {
 		return res.Status(fiber.StatusExpectationFailed).JSON(fiber.Map{
 			"status":  joaat.Hash("DELETE_POST_FAILED"),
 			"message": fmt.Sprintf("Error : %s", err.Error()),
+			"data":    "NO_DATA_ACQUIRED",
 		})
 	}
 
 	return res.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  joaat.Hash("DELETE_POST_SUCCESS"),
 		"message": "Post deleted successfully",
+		"data":    "NO_DATA_ACQUIRED",
+	})
+}
+
+func ReadPost(res *fiber.Ctx) error {
+	title := res.Params("title")
+
+	var post models.Post
+
+	if title == "" {
+		return res.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"status":  joaat.Hash("ENSURE_ID_VALID"),
+			"message": "Request cannot be proceed, invalid title",
+			"data":    "NO_DATA_ACQUIRED",
+		})
+	}
+
+	if err := findTitle(title, &post); err != nil {
+		return res.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"status":  joaat.Hash("FIND_POST_FAILED"),
+			"message": fmt.Sprintf("Error : %s", err.Error()),
+			"data":    "NO_DATA_ACQUIRED",
+		})
+	}
+
+	return res.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  joaat.Hash("READING_POST_SUCCESS"),
+		"message": "Reading post successfully",
+		"data":    responsePost(post),
 	})
 }
