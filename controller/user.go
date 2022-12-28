@@ -18,6 +18,8 @@ type User struct {
 	Email    string `json:"email"`
 	Avatar   string `json:"avatar"`
 	Status   string `json:"status"`
+	RoleID   uint   `json:"role_id"`
+	Role     Role   `json:"user_role"`
 }
 
 func hashPassword(password string) (string, error) {
@@ -33,6 +35,8 @@ func responseUser(user models.User) User {
 		Email:    user.Email,
 		Avatar:   user.Avatar,
 		Status:   user.Status,
+		RoleID:   user.RoleID,
+		Role:     getRoleData(int(user.RoleID)),
 	}
 }
 
@@ -69,6 +73,7 @@ func CreateUser(res *fiber.Ctx) error {
 		})
 	}
 
+	user.RoleID = 1
 	user.Fullname = input.Fullname
 	user.Username = input.Username
 	user.Email = input.Email

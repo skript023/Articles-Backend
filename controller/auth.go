@@ -74,10 +74,12 @@ func authAttempt(credentials interface{}) (*models.User, error) {
 	}
 
 	if email != nil && CheckPasswordHash(data["password"].(string), email.Password) {
+		database.DB.Find(&email.Role, "role = ?", email.RoleID)
 		return email, nil
 	}
 
 	if user != nil && CheckPasswordHash(data["password"].(string), user.Password) {
+		database.DB.Find(&user.Role, "role = ?", user.RoleID)
 		return user, nil
 	}
 
@@ -99,6 +101,7 @@ func Login(res *fiber.Ctx) error {
 			"status":  joaat.Hash("BODY_PARSING_FAILED"),
 			"message": "Error on login request",
 			"data":    "NO_DATA_AQUIRED",
+			"user":    "NO_ACCESS_ACQUIRED",
 		})
 	}
 
@@ -107,6 +110,7 @@ func Login(res *fiber.Ctx) error {
 			"status":  joaat.Hash("BODY_PARSING_FAILED"),
 			"message": "Credential does not match",
 			"data":    "NO_DATA_AQUIRED",
+			"user":    "NO_ACCESS_ACQUIRED",
 		})
 	}
 
@@ -122,6 +126,7 @@ func Login(res *fiber.Ctx) error {
 			"status":  joaat.Hash("AUTH_FAILED"),
 			"message": "Credential does not match",
 			"data":    "NO_DATA_AQUIRED",
+			"user":    "NO_ACCESS_ACQUIRED",
 		})
 	}
 
@@ -137,7 +142,7 @@ func Login(res *fiber.Ctx) error {
 		return res.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  joaat.Hash("GENERATE_TOKEN_FAILED"),
 			"message": fmt.Sprintf("Error : %v", err),
-			"data":    "NO_DATA_ACQUIRED",
+			"token":   "NO_ACCESS_ACQUIRED",
 		})
 	}
 
@@ -147,15 +152,17 @@ func Login(res *fiber.Ctx) error {
 		return res.Status(fiber.StatusOK).JSON(fiber.Map{
 			"status":  joaat.Hash("GET_SESSION_FAILED"),
 			"message": fmt.Sprintf("Error : %v", err),
-			"data":    "NO_DATA_ACQUIRED",
+			"token":   "NO_ACCESS_ACQUIRED",
+			"user":    "NO_ACCESS_ACQUIRED",
 		})
 	}
 
 	if err := current_session.Regenerate(); err != nil {
-		return res.Status(fiber.StatusOK).JSON(fiber.Map{
+		return res.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  joaat.Hash("REGENERATE_SESSION_FAILED"),
 			"message": fmt.Sprintf("Error : %v", err),
-			"data":    "NO_DATA_ACQUIRED",
+			"token":   "NO_ACCESS_ACQUIRED",
+			"user":    "NO_ACCESS_ACQUIRED",
 		})
 	}
 
@@ -164,7 +171,8 @@ func Login(res *fiber.Ctx) error {
 	res.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  joaat.Hash("AUTH_SUCCESS"),
 		"message": "Success login",
-		"data":    t,
+		"token":   t,
+		"user":    responseUser(*user),
 	})
 
 	return current_session.Save()

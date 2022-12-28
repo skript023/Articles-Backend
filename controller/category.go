@@ -50,7 +50,7 @@ func CreateCategory(res *fiber.Ctx) error {
 
 	return res.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  joaat.Hash("CREATE_CATEGORY_SUCCESS"),
-		"message": "Post created successfully.",
+		"message": "Category created successfully.",
 	})
 }
 
@@ -84,7 +84,7 @@ func GetCategories(res *fiber.Ctx) error {
 func findCategory(id int, category *models.Category) error {
 	database.DB.Find(&category, "id = ?", id)
 	if category.ID == 0 {
-		return errors.New("Post does not exist")
+		return errors.New("Category does not exist")
 	}
 
 	return nil
@@ -158,7 +158,7 @@ func UpdateCategory(res *fiber.Ctx) error {
 
 	return res.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  joaat.Hash("UPDATE_CATEGORY_SUCCESS"),
-		"message": "Post updated successfully",
+		"message": "Category updated successfully",
 	})
 }
 

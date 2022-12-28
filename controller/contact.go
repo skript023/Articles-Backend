@@ -56,7 +56,7 @@ func CreateContact(res *fiber.Ctx) error {
 
 	return res.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  joaat.Hash("CREATE_COMMENT_SUCCESS"),
-		"message": "Registeration Success.",
+		"message": "Your message sent successfully.",
 	})
 }
 
@@ -76,7 +76,7 @@ func GetContacts(res *fiber.Ctx) error {
 func findContact(id int, contact *models.Contact) error {
 	database.DB.Find(&contact, "id = ?", id)
 	if contact.ID == 0 {
-		return errors.New("Post does not exist")
+		return errors.New("Contact does not exist")
 	}
 
 	return nil
@@ -141,7 +141,7 @@ func UpdateContact(res *fiber.Ctx) error {
 
 	return res.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  joaat.Hash("UPDATE_CONTACT_SUCCESS"),
-		"message": "Post updated successfully",
+		"message": "Contact updated successfully",
 	})
 }
 
@@ -173,6 +173,6 @@ func DeleteContact(res *fiber.Ctx) error {
 
 	return res.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  joaat.Hash("DELETE_CONTACT_SUCCESS"),
-		"message": "Post deleted successfully",
+		"message": "Contact deleted successfully",
 	})
 }

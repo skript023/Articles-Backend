@@ -70,9 +70,9 @@ func CreatePost(res *fiber.Ctx) error {
 	user_id := GetIdFromToken(res)
 
 	if user_id == 0 {
-		return res.Status(fiber.StatusNotFound).JSON(fiber.Map{
+		return res.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"status":  joaat.Hash("USER_OWNER_ID_INVALID"),
-			"message": "Invalid post owner",
+			"message": "Forbidden, user are invalid",
 		})
 	}
 
