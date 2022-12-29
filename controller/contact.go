@@ -11,6 +11,7 @@ import (
 )
 
 type Contact struct {
+	ID       uint   `json:"id"`
 	Fullname string `json:"fullname"`
 	Email    string `json:"email"`
 	Message  string `json:"message"`
@@ -18,6 +19,7 @@ type Contact struct {
 
 func responseContact(contact models.Contact) Contact {
 	return Contact{
+		ID:       contact.ID,
 		Fullname: contact.Fullname,
 		Email:    contact.Email,
 		Message:  contact.Message,

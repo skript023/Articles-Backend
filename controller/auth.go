@@ -146,36 +146,15 @@ func Login(res *fiber.Ctx) error {
 		})
 	}
 
-	current_session, err := store_session.Get(res)
+	avatar := res.BaseURL() + "/api/v1/user/avatar/" + user.Avatar
+	user.Avatar = avatar
 
-	if err != nil {
-		return res.Status(fiber.StatusOK).JSON(fiber.Map{
-			"status":  joaat.Hash("GET_SESSION_FAILED"),
-			"message": fmt.Sprintf("Error : %v", err),
-			"token":   "NO_ACCESS_ACQUIRED",
-			"user":    "NO_ACCESS_ACQUIRED",
-		})
-	}
-
-	if err := current_session.Regenerate(); err != nil {
-		return res.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status":  joaat.Hash("REGENERATE_SESSION_FAILED"),
-			"message": fmt.Sprintf("Error : %v", err),
-			"token":   "NO_ACCESS_ACQUIRED",
-			"user":    "NO_ACCESS_ACQUIRED",
-		})
-	}
-
-	current_session.Set("user", responseUser(*user))
-
-	res.Status(fiber.StatusOK).JSON(fiber.Map{
-		"status":  joaat.Hash("AUTH_SUCCESS"),
+	return res.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  joaat.Hash(user.Username + "AUTH_SUCCESS" + user.Email),
 		"message": "Success login",
 		"token":   t,
 		"user":    responseUser(*user),
 	})
-
-	return current_session.Save()
 }
 
 func SessionData(res *fiber.Ctx) error {
@@ -190,18 +169,77 @@ func SessionData(res *fiber.Ctx) error {
 	return res.Status(200).JSON(user.(fiber.Map))
 }
 
-func authUser(res *fiber.Ctx) (User, error) {
-	current, err := store_session.Get(res)
-
-	if err != nil {
-		return User{}, err
+func AuthUser(res *fiber.Ctx) error {
+	type Input struct {
+		Identity string `json:"identity" validate:"required"`
+		Code     uint32 `json:"code" validate:"required"`
 	}
 
-	user := current.Get("user")
+	var input Input
 
-	result := user.(User)
+	if err := res.BodyParser(&input); err != nil {
+		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  joaat.Hash("BODY_PARSING_FAILED"),
+			"message": "Error on login request",
+			"data":    "NO_DATA_AQUIRED",
+			"user":    "NO_ACCESS_ACQUIRED",
+		})
+	}
 
-	return result, nil
+	if err := validate.Struct(input); err != nil {
+		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  joaat.Hash("REQUIREMENT_DOES_NOT_MATCH"),
+			"message": "Refresh Failed",
+			"data":    "NO_DATA_AQUIRED",
+			"user":    "NO_ACCESS_ACQUIRED",
+		})
+	}
+
+	user, err := getUserByUsername(input.Identity)
+
+	if err != nil {
+		return res.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  joaat.Hash("GENERATE_TOKEN_FAILED"),
+			"message": fmt.Sprintf("Error : %v", err),
+			"token":   "NO_ACCESS_ACQUIRED",
+			"user":    "NO_ACCESS_ACQUIRED",
+		})
+	}
+
+	code := joaat.Hash(user.Username + "AUTH_SUCCESS" + user.Email)
+
+	if input.Code != code {
+		return res.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"status":  joaat.Hash("GENERATE_TOKEN_FAILED"),
+			"message": "User not authentication",
+			"token":   "NO_ACCESS_ACQUIRED",
+			"user":    "NO_ACCESS_ACQUIRED",
+		})
+	}
+
+	token := jwt.New(jwt.SigningMethodHS256)
+
+	claims := token.Claims.(jwt.MapClaims)
+	claims["username"] = user.Username
+	claims["user_id"] = user.ID
+	claims["exp"] = time.Now().Add(time.Hour * 24).Unix()
+
+	t, err := token.SignedString([]byte(config.Env("SECRET")))
+	if err != nil {
+		return res.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  joaat.Hash("GENERATE_TOKEN_FAILED"),
+			"message": fmt.Sprintf("Error : %v", err),
+			"token":   "NO_ACCESS_ACQUIRED",
+			"user":    "NO_ACCESS_ACQUIRED",
+		})
+	}
+
+	return res.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  joaat.Hash("REFRESH_TOKEN_SUCCESS"),
+		"message": "Refresh success",
+		"token":   t,
+		"user":    responseUser(*user),
+	})
 }
 
 func GetIdFromToken(res *fiber.Ctx) uint {

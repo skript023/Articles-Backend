@@ -54,19 +54,19 @@ func CreateRole(res *fiber.Ctx) error {
 	})
 }
 
-func createRole(name string) (uint, error) {
-	var role models.Role
+// func createRole(name string) (uint, error) {
+// 	var role models.Role
 
-	role.Role = name
+// 	role.Role = name
 
-	result := database.DB.Create(&role)
+// 	result := database.DB.Create(&role)
 
-	if result.Error != nil {
-		return 0, result.Error
-	}
+// 	if result.Error != nil {
+// 		return 0, result.Error
+// 	}
 
-	return role.ID, nil
-}
+// 	return role.ID, nil
+// }
 
 func GetRoles(res *fiber.Ctx) error {
 	roles := []models.Role{}

@@ -103,7 +103,36 @@ func CreateUser(res *fiber.Ctx) error {
 }
 
 func GetUsers(res *fiber.Ctx) error {
+	type Input struct {
+		Role uint32 `json:"role" validate:"required"`
+	}
+
+	var input = new(Input)
 	users := []models.User{}
+
+	if err := res.BodyParser(&input); err != nil {
+		return res.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  joaat.Hash("GET_USER_FAILED"),
+			"message": fmt.Sprintf("Error : %s", err.Error()),
+			"users":   fiber.Map{},
+		})
+	}
+
+	if err := validate.Struct(input); err != nil {
+		return res.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  joaat.Hash("GET_USER_FAILED"),
+			"message": fmt.Sprintf("Error : %s", err.Error()),
+			"users":   fiber.Map{},
+		})
+	}
+
+	if input.Role != joaat.Hash("admin") {
+		return res.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"status":  joaat.Hash("GET_USER_FAILED"),
+			"message": "Restricted Area.",
+			"users":   fiber.Map{},
+		})
+	}
 
 	database.DB.Find(&users)
 	response_users := []User{}
@@ -112,7 +141,11 @@ func GetUsers(res *fiber.Ctx) error {
 		response_users = append(response_users, response_user)
 	}
 
-	return res.Status(fiber.StatusOK).JSON(response_users)
+	return res.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  joaat.Hash("GET_USER_FAILED"),
+		"message": "Users information acquired successfully",
+		"users":   response_users,
+	})
 }
 
 func findUser(id int, user *models.User) error {

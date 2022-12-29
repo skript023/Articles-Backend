@@ -3,6 +3,7 @@ package routes
 import (
 	"ArticleBackend/controller"
 	"ArticleBackend/middleware"
+	"fmt"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/session"
@@ -31,6 +32,7 @@ func SetupRouteApi(app *fiber.App) {
 	api.Get("/test2", middleware.Protected(), controller.SessionData)
 
 	auth.Post("/login", controller.Login)
+	auth.Post("/refresh", controller.AuthUser)
 
 	post.Get("/all", controller.GetPosts)
 	post.Get("/:id", controller.GetPost)
@@ -40,8 +42,14 @@ func SetupRouteApi(app *fiber.App) {
 	post.Get("/read/:title", controller.ReadPost)
 
 	user.Post("/create", controller.CreateUser)
+	user.Post("/all", middleware.Protected(), controller.GetUsers)
 	user.Patch("/update/:id", middleware.Protected(), controller.UpdateUser)
 	user.Delete("/delete/:id", middleware.Protected(), controller.DeleteUser)
+	user.Get("/avatar/:name", func(c *fiber.Ctx) error {
+		image := c.Params("name")
+		return c.SendFile(fmt.Sprintf("./public/users/avatar/%v", image))
+	})
 
 	contact.Post("/create", controller.CreateContact)
+	contact.Get("/all", middleware.Protected(), controller.GetContacts)
 }
