@@ -75,6 +75,18 @@ func GetContacts(res *fiber.Ctx) error {
 	return res.Status(fiber.StatusOK).JSON(response_contacts)
 }
 
+func ContactCount(res *fiber.Ctx) error {
+	contacts := models.Contact{}
+	var counts int64
+	database.DB.Model(&contacts).Count(&counts)
+
+	return res.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":        joaat.Hash("CONTACT_COUNT_ACQUIRED"),
+		"message":       "Contact count acquired successfully",
+		"contact_count": counts,
+	})
+}
+
 func findContact(id int, contact *models.Contact) error {
 	database.DB.Find(&contact, "id = ?", id)
 	if contact.ID == 0 {

@@ -45,6 +45,7 @@ func SetupRouteApi(app *fiber.App) {
 	user.Post("/all", middleware.Protected(), controller.GetUsers)
 	user.Patch("/update/:id", middleware.Protected(), controller.UpdateUser)
 	user.Delete("/delete/:id", middleware.Protected(), controller.DeleteUser)
+	user.Get("/counts", middleware.Protected(), controller.UsersCount)
 	user.Get("/avatar/:name", func(c *fiber.Ctx) error {
 		image := c.Params("name")
 		return c.SendFile(fmt.Sprintf("./public/users/avatar/%v", image))
@@ -52,4 +53,5 @@ func SetupRouteApi(app *fiber.App) {
 
 	contact.Post("/create", controller.CreateContact)
 	contact.Get("/all", middleware.Protected(), controller.GetContacts)
+	contact.Get("/counts", middleware.Protected(), controller.ContactCount)
 }
