@@ -153,8 +153,19 @@ func GetComment(res *fiber.Ctx) error {
 	return res.Status(fiber.StatusOK).JSON(comment)
 }
 
-func findCommentPost(id uint, comment *models.Comment) error {
-	database.DB.Find(&comment, "post_id = ?", id)
+func CommentsCount(res *fiber.Ctx) error {
+	var counts int64
+	database.DB.Model(&models.Comment{}).Count(&counts)
+
+	return res.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":   joaat.Hash("COMMENTS_COUNT_ACQUIRED"),
+		"message":  "Comments count acquired successully",
+		"comments": counts,
+	})
+}
+
+func findCommentPost(post_id uint, comment *models.Comment) error {
+	database.DB.Find(&comment, "id = ?", post_id)
 	if comment.ID == 0 {
 		return errors.New("Post does not exist")
 	}
