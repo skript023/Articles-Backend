@@ -81,9 +81,9 @@ func ContactCount(res *fiber.Ctx) error {
 	database.DB.Model(&contacts).Count(&counts)
 
 	return res.Status(fiber.StatusOK).JSON(fiber.Map{
-		"status":        joaat.Hash("CONTACT_COUNT_ACQUIRED"),
-		"message":       "Contact count acquired successfully",
-		"contact_count": counts,
+		"status":   joaat.Hash("CONTACT_COUNT_ACQUIRED"),
+		"message":  "Contact count acquired successfully",
+		"contacts": counts,
 	})
 }
 

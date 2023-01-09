@@ -149,8 +149,9 @@ func GetUsers(res *fiber.Ctx) error {
 }
 
 func UsersCount(res *fiber.Ctx) error {
+	users := models.User{}
 	var counts int64
-	database.DB.Model(&models.User{}).Count(&counts)
+	database.DB.Model(&users).Count(&counts)
 
 	return res.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  joaat.Hash("USERS_COUNT_ACQUIRED"),
